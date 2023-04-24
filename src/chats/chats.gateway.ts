@@ -1,28 +1,55 @@
 import { Logger } from '@nestjs/common';
+import { Socket } from 'socket.io';
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { Socket } from 'dgram';
 
-@WebSocketGateway()
-export class ChatsGateway implements OnGatewayInit {
+@WebSocketGateway({ namespace: 'chattings' })
+export class ChatsGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   private logger = new Logger('chat');
 
   constructor() {
     this.logger.log('constructor');
   }
 
-  afterInit(server: any) {}
+  afterInit() {
+    this.logger.log('init');
+  }
+
+  handleDisconnect(@ConnectedSocket() socket: Socket) {
+    this.logger.log(`disconnected : ${socket.id} ${socket.nsp.name}`);
+  }
+
+  handleConnection(@ConnectedSocket() socket: Socket) {
+    this.logger.log(`connected : ${socket.id} ${socket.nsp.name}`);
+  }
+
   @SubscribeMessage('new_user')
   handleNewUser(
-    @MessageBody() username: string, // !! 클라이언트에서 받은 데이터
+    @MessageBody() username: string,
     @ConnectedSocket() socket: Socket,
   ) {
-    console.log(username);
-    socket.emit('hello_user', `hello + ${username}`);
+    // username db에 적재
+    socket.broadcast.emit('user_connected', username);
+    return username;
+  }
+
+  @SubscribeMessage('submit_chat')
+  handleSubmitChat(
+    @MessageBody() chat: string,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    socket.broadcast.emit('new_chat', {
+      chat,
+      username: socket.id,
+    });
   }
 }
