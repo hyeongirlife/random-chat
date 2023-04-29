@@ -13,7 +13,7 @@ socket.on('user_connected', (username) => {
 });
 socket.on('new_chat', (data) => {
   const { chat, username } = data;
-  drawNewChat(`${username} ${chat}`);
+  drawNewChat(`${username}: ${chat}`);
 });
 
 const handleSubmit = (event) => {
